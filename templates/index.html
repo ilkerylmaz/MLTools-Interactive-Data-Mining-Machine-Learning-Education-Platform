@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block title %}Ana Sayfa - Veri Madenciliği Eğitim Platformu{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="card-body p-5">
+                    <h1 class="display-5 fw-bold mb-3">
+                        <i class="bi bi-diagram-3 me-3"></i>
+                        Veri Madenciliği Eğitim Platformu
+                    </h1>
+                    <p class="lead mb-4">
+                        Makine öğrenmesi algoritmalarını <strong>sıfırdan yazılmış</strong> (Vanilla Python) 
+                        implementasyonlarla öğrenin. Hiçbir hazır ML kütüphanesi kullanılmamıştır.
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="bi bi-code-slash me-1"></i> Vanilla Python
+                        </span>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="bi bi-calculator me-1"></i> Matematiksel Temeller
+                        </span>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="bi bi-graph-up me-1"></i> İnteraktif Grafikler
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Algorithm Cards -->
+    <h4 class="mb-4"><i class="bi bi-grid me-2"></i>Algoritmalar</h4>
+    
+    <div class="row g-4">
+        <!-- KNN Card -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-bullseye text-primary fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0">KNN</h5>
+                            <small class="text-muted">Sınıflandırma</small>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted small">
+                        K-Nearest Neighbors algoritması. Öklid mesafesi ile en yakın k komşuyu bularak sınıflandırma yapar.
+                    </p>
+                    <div class="formula-box small">
+                        d(p,q) = √Σ(pᵢ - qᵢ)²
+                    </div>
+                    <a href="{{ url_for('knn_page') }}" class="btn btn-primary w-100 mt-3">
+                        <i class="bi bi-play me-1"></i> Dene
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Decision Tree Card -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-diagram-2 text-success fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0">Decision Tree</h5>
+                            <small class="text-muted">Sınıflandırma</small>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted small">
+                        ID3, C4.5 ve CART algoritmaları. Entropy, Gain Ratio, Gini ve Twoing kriterleri desteklenir.
+                    </p>
+                    <div class="formula-box small">
+                        H(S) = -Σ p(c)·log₂p(c)
+                    </div>
+                    <a href="{{ url_for('decision_tree_page') }}" class="btn btn-success w-100 mt-3">
+                        <i class="bi bi-play me-1"></i> Dene
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- K-Means Card -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-circle text-warning fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0">K-Means</h5>
+                            <small class="text-muted">Kümeleme</small>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted small">
+                        K-Means kümeleme algoritması. Manuel centroid iterasyonu ve K-Means++ başlatma desteği.
+                    </p>
+                    <div class="formula-box small">
+                        J = Σ Σ ||x - μₖ||²
+                    </div>
+                    <a href="{{ url_for('kmeans_page') }}" class="btn btn-warning w-100 mt-3">
+                        <i class="bi bi-play me-1"></i> Dene
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Apriori Card -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-link-45deg text-danger fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0">Apriori</h5>
+                            <small class="text-muted">Birliktelik</small>
+                        </div>
+                    </div>
+                    <p class="card-text text-muted small">
+                        Birliktelik kuralları çıkarımı. Support, Confidence ve Lift metrikleri hesaplanır.
+                    </p>
+                    <div class="formula-box small">
+                        conf(X→Y) = sup(X∪Y)/sup(X)
+                    </div>
+                    <a href="{{ url_for('apriori_page') }}" class="btn btn-danger w-100 mt-3">
+                        <i class="bi bi-play me-1"></i> Dene
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Section -->
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Nasıl Kullanılır?
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-2">Sol menüden bir algoritma seçin</li>
+                        <li class="mb-2">CSV dosyanızı yükleyin</li>
+                        <li class="mb-2">Parametreleri ayarlayın</li>
+                        <li class="mb-2">"Çalıştır" butonuna tıklayın</li>
+                        <li>Sonuçları ve metrikleri inceleyin</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-file-earmark-text me-2"></i>CSV Format Gereksinimleri
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Algoritma</th>
+                                <th>Format</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>KNN, Decision Tree</td>
+                                <td>Son sütun = etiket (label)</td>
+                            </tr>
+                            <tr>
+                                <td>K-Means</td>
+                                <td>Tüm sütunlar numerik</td>
+                            </tr>
+                            <tr>
+                                <td>Apriori</td>
+                                <td>Her satır bir transaction</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

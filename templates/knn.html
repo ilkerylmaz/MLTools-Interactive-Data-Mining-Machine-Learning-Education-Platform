@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block title %}KNN - Veri Madenciliği Eğitim Platformu{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-bullseye me-2"></i>K-Nearest Neighbors (KNN)</h2>
+            <p class="text-muted mb-0">Öklid mesafesi tabanlı sınıflandırma algoritması</p>
+        </div>
+    </div>
+    
+    <!-- Algorithm Info -->
+    <div class="algorithm-info">
+        <h5><i class="bi bi-lightbulb me-2"></i>Algoritma Hakkında</h5>
+        <p>
+            KNN, bir noktayı sınıflandırmak için en yakın k komşusuna bakar ve çoğunluk oylaması yapar.
+            "Lazy learner" olarak bilinir çünkü gerçek bir eğitim yapmaz, sadece veriyi hafızada tutar.
+        </p>
+        <div class="formula-box" style="background: rgba(255,255,255,0.1); border-left-color: white;">
+            <strong>Öklid Mesafesi:</strong> d(p, q) = √Σ(pᵢ - qᵢ)²
+        </div>
+    </div>
+    
+    <div id="alertContainer"></div>
+    
+    <div class="row">
+        <!-- Input Section -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-gear me-2"></i>Parametreler
+                </div>
+                <div class="card-body">
+                    <form id="knnForm">
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label class="form-label">CSV Dosyası</label>
+                            <div class="upload-area" id="uploadArea">
+                                <i class="bi bi-cloud-upload"></i>
+                                <p class="upload-text mb-0">
+                                    Dosya seçmek için tıklayın veya sürükleyin
+                                </p>
+                                <small class="text-muted">Son sütun etiket (label) olmalı</small>
+                            </div>
+                            <input type="file" id="fileInput" name="file" accept=".csv" class="d-none" required>
+                        </div>
+                        
+                        <!-- K Value -->
+                        <div class="mb-3">
+                            <label class="form-label">K Değeri (Komşu Sayısı)</label>
+                            <input type="number" class="form-control" name="k" id="kValue" 
+                                   value="3" min="1" max="50">
+                            <small class="text-muted">Tek sayı olması önerilir</small>
+                        </div>
+                        
+                        <!-- Test Size -->
+                        <div class="mb-4">
+                            <label class="form-label">Test Oranı: <span id="testSizeValue">20%</span></label>
+                            <input type="range" class="form-range" name="test_size" id="testSize" 
+                                   min="0.1" max="0.5" step="0.05" value="0.2">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">10%</small>
+                                <small class="text-muted">50%</small>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-play me-2"></i>Çalıştır
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div class="col-lg-8">
+            <div id="resultsSection" style="display: none;">
+                <!-- Metrics -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-speedometer2 me-2"></i>Performans Metrikleri
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3" id="metricsContainer">
+                            <!-- Metrics will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Confusion Matrix & Chart -->
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="bi bi-grid-3x3 me-2"></i>Karmaşıklık Matrisi
+                            </div>
+                            <div class="card-body text-center" id="confusionMatrixContainer">
+                                <!-- Confusion matrix will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="bi bi-bar-chart me-2"></i>Sınıf Bazlı Metrikler
+                            </div>
+                            <div class="card-body">
+                                <canvas id="metricsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Class Report -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="bi bi-table me-2"></i>Detaylı Sınıf Raporu
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table" id="classReportTable">
+                                <!-- Table will be inserted here -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Placeholder -->
+            <div id="placeholder" class="text-center py-5">
+                <i class="bi bi-arrow-left-circle text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">Başlamak için parametreleri ayarlayın</h5>
+                <p class="text-muted">CSV dosyası yükleyin ve K değerini belirleyin</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let metricsChart = null;
+    
+    // Setup file upload
+    document.addEventListener('DOMContentLoaded', function() {
+        setupFileUpload('uploadArea', 'fileInput');
+        
+        // Test size slider
+        document.getElementById('testSize').addEventListener('input', function(e) {
+            document.getElementById('testSizeValue').textContent = Math.round(e.target.value * 100) + '%';
+        });
+    });
+    
+    // Form submit
+    document.getElementById('knnForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput.files.length) {
+            showError('Lütfen bir CSV dosyası seçin');
+            return;
+        }
+        
+        showLoading();
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('k', document.getElementById('kValue').value);
+        formData.append('test_size', document.getElementById('testSize').value);
+        
+        try {
+            const response = await fetch('/api/knn', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            hideLoading();
+            
+            if (result.success) {
+                displayResults(result);
+            } else {
+                showError(result.error);
+            }
+        } catch (error) {
+            hideLoading();
+            showError('Bir hata oluştu: ' + error.message);
+        }
+    });
+    
+    function displayResults(result) {
+        document.getElementById('placeholder').style.display = 'none';
+        document.getElementById('resultsSection').style.display = 'block';
+        
+        // Metrics
+        const metricsHtml = `
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${(result.metrics.accuracy * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Accuracy</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${(result.metrics.precision * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Precision</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${(result.metrics.recall * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Recall</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${(result.metrics.f1_score * 100).toFixed(1)}%</div>
+                    <div class="metric-label">F1-Score</div>
+                </div>
+            </div>
+        `;
+        document.getElementById('metricsContainer').innerHTML = metricsHtml;
+        
+        // Confusion Matrix
+        document.getElementById('confusionMatrixContainer').innerHTML = 
+            createConfusionMatrix(result.confusion_matrix, result.labels);
+        
+        // Class Report Table
+        let tableHtml = `
+            <thead>
+                <tr>
+                    <th>Sınıf</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-Score</th>
+                    <th>Support</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        for (const [className, metrics] of Object.entries(result.class_report)) {
+            tableHtml += `
+                <tr>
+                    <td><strong>${className}</strong></td>
+                    <td>${(metrics.precision * 100).toFixed(1)}%</td>
+                    <td>${(metrics.recall * 100).toFixed(1)}%</td>
+                    <td>${(metrics.f1_score * 100).toFixed(1)}%</td>
+                    <td>${metrics.support}</td>
+                </tr>
+            `;
+        }
+        tableHtml += '</tbody>';
+        document.getElementById('classReportTable').innerHTML = tableHtml;
+        
+        // Chart
+        updateChart(result);
+    }
+    
+    function updateChart(result) {
+        const ctx = document.getElementById('metricsChart').getContext('2d');
+        
+        if (metricsChart) {
+            metricsChart.destroy();
+        }
+        
+        const labels = Object.keys(result.class_report);
+        const precisionData = labels.map(l => result.class_report[l].precision * 100);
+        const recallData = labels.map(l => result.class_report[l].recall * 100);
+        const f1Data = labels.map(l => result.class_report[l].f1_score * 100);
+        
+        metricsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Precision',
+                        data: precisionData,
+                        backgroundColor: 'rgba(67, 97, 238, 0.8)'
+                    },
+                    {
+                        label: 'Recall',
+                        data: recallData,
+                        backgroundColor: 'rgba(6, 214, 160, 0.8)'
+                    },
+                    {
+                        label: 'F1-Score',
+                        data: f1Data,
+                        backgroundColor: 'rgba(255, 209, 102, 0.8)'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Yüzde (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

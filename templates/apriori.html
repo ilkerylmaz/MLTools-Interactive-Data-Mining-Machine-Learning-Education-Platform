@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+
+{% block title %}Apriori - Birliktelik Kuralları - Veri Madenciliği Eğitim Platformu{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sol Panel: Algoritma Bilgisi ve Ayarlar -->
+    <div class="col-lg-4">
+        <!-- Algoritma Açıklaması -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-basket me-2"></i>Apriori Algoritması
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Apriori, birliktelik kuralları çıkarmak için kullanılan bir algoritmadır. 
+                    Market sepeti analizi için yaygın kullanılır.
+                </p>
+                
+                <div class="algorithm-info mt-3">
+                    <h6><i class="bi bi-calculator me-2"></i>Temel Kavramlar</h6>
+                    
+                    <div class="math-formula bg-light p-2 rounded mb-2">
+                        <strong>Support (Destek):</strong><br>
+                        <code>support(X) = |X içeren işlemler| / |Toplam|</code>
+                    </div>
+                    
+                    <div class="math-formula bg-light p-2 rounded mb-2">
+                        <strong>Confidence (Güven):</strong><br>
+                        <code>conf(X→Y) = support(X∪Y) / support(X)</code>
+                    </div>
+                    
+                    <div class="math-formula bg-light p-2 rounded mb-3">
+                        <strong>Lift (Kaldırma):</strong><br>
+                        <code>lift(X→Y) = conf(X→Y) / support(Y)</code>
+                        <br><small class="text-muted">lift > 1: Pozitif ilişki</small>
+                    </div>
+                    
+                    <div class="alert alert-info small">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        <strong>Apriori Özelliği:</strong> Bir itemset sık değilse, üst kümeleri de sık olamaz.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parametre Ayarları -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-sliders me-2"></i>Parametreler
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="aprioriForm" enctype="multipart/form-data">
+                    <!-- Dosya Yükleme -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-file-earmark-csv me-1"></i>CSV Dosyası
+                        </label>
+                        <input type="file" class="form-control" name="file" id="fileInput" 
+                               accept=".csv" required>
+                        <div class="form-text">
+                            Her satır bir işlem (transaction).<br>
+                            Örnek: <code>ekmek,süt,yumurta</code>
+                        </div>
+                    </div>
+
+                    <!-- Minimum Support -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-percent me-1"></i>Minimum Support
+                        </label>
+                        <input type="range" class="form-range" id="minSupport" name="min_support" 
+                               min="0.01" max="0.5" step="0.01" value="0.1">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">1%</small>
+                            <span class="badge bg-primary" id="minSupportValue">10%</span>
+                            <small class="text-muted">50%</small>
+                        </div>
+                    </div>
+
+                    <!-- Minimum Confidence -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-check2-circle me-1"></i>Minimum Confidence
+                        </label>
+                        <input type="range" class="form-range" id="minConfidence" name="min_confidence" 
+                               min="0.1" max="1.0" step="0.05" value="0.5">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">10%</small>
+                            <span class="badge bg-success" id="minConfidenceValue">50%</span>
+                            <small class="text-muted">100%</small>
+                        </div>
+                    </div>
+
+                    <!-- Çalıştır Butonu -->
+                    <button type="submit" class="btn btn-primary w-100" id="runBtn">
+                        <i class="bi bi-play-fill me-2"></i>Algoritmayı Çalıştır
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Örnek Veri Formatı -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Veri Formatı Örneği
+                </h6>
+            </div>
+            <div class="card-body">
+                <pre class="bg-light p-2 rounded small mb-0">ekmek,süt,yumurta
+süt,peynir
+ekmek,süt,peynir,yumurta
+ekmek,peynir
+süt,yumurta</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ Panel: Sonuçlar -->
+    <div class="col-lg-8">
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center py-5 d-none">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+            <p class="mt-3 text-muted">Algoritma çalışıyor...</p>
+        </div>
+
+        <!-- Sonuç Alanı -->
+        <div id="resultsArea" class="d-none">
+            <!-- Özet Metrikler -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="metric-card" style="border-left-color: var(--primary-color);">
+                        <div class="metric-value" id="metricTransactions">-</div>
+                        <div class="metric-label">İşlem Sayısı</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="border-left-color: var(--success-color);">
+                        <div class="metric-value" id="metricItemsets">-</div>
+                        <div class="metric-label">Sık Itemset</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="border-left-color: var(--accent-color);">
+                        <div class="metric-value" id="metricRules">-</div>
+                        <div class="metric-label">Kural Sayısı</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card" style="border-left-color: var(--warning-color);">
+                        <div class="metric-value" id="metricAvgLift">-</div>
+                        <div class="metric-label">Ort. Lift</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Birliktelik Kuralları -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Birliktelik Kuralları
+                    </h5>
+                    <span class="badge bg-primary" id="rulesCount">0 kural</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover" id="rulesTable">
+                            <thead class="sticky-top bg-white">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Kural</th>
+                                    <th>Support</th>
+                                    <th>Confidence</th>
+                                    <th>Lift</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grafikler -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-bar-chart me-2"></i>Itemset Boyut Dağılımı
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="itemsetChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up me-2"></i>Support vs Confidence
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="scatterChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sık Itemset'ler -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-collection me-2"></i>Sık Geçen Itemset'ler
+                    </h5>
+                    <span class="badge bg-success" id="itemsetsCount">0 itemset</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-hover" id="itemsetsTable">
+                            <thead class="sticky-top bg-white">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Itemset</th>
+                                    <th>Boyut</th>
+                                    <th>Support</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Başlangıç Mesajı -->
+        <div id="initialMessage" class="text-center py-5">
+            <i class="bi bi-basket display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">Transaction Verisi Yükleyin</h4>
+            <p class="text-muted">Her satırda virgülle ayrılmış ürünler içeren bir CSV dosyası seçin.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let itemsetChart = null;
+let scatterChart = null;
+
+// Slider değer güncellemeleri
+document.getElementById('minSupport').addEventListener('input', function() {
+    document.getElementById('minSupportValue').textContent = Math.round(this.value * 100) + '%';
+});
+
+document.getElementById('minConfidence').addEventListener('input', function() {
+    document.getElementById('minConfidenceValue').textContent = Math.round(this.value * 100) + '%';
+});
+
+// Form submit
+document.getElementById('aprioriForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    // UI güncelle
+    document.getElementById('initialMessage').classList.add('d-none');
+    document.getElementById('resultsArea').classList.add('d-none');
+    document.getElementById('loadingSpinner').classList.remove('d-none');
+    document.getElementById('runBtn').disabled = true;
+    
+    try {
+        const response = await fetch('/api/apriori', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayResults(data);
+        } else {
+            alert('Hata: ' + data.error);
+        }
+    } catch (error) {
+        alert('Bağlantı hatası: ' + error.message);
+    } finally {
+        document.getElementById('loadingSpinner').classList.add('d-none');
+        document.getElementById('runBtn').disabled = false;
+    }
+});
+
+function displayResults(data) {
+    // Metrikleri güncelle
+    document.getElementById('metricTransactions').textContent = data.n_transactions;
+    document.getElementById('metricItemsets').textContent = data.summary.n_frequent_itemsets;
+    document.getElementById('metricRules').textContent = data.summary.n_rules;
+    document.getElementById('metricAvgLift').textContent = data.summary.avg_lift.toFixed(2);
+    
+    // Badge'leri güncelle
+    document.getElementById('rulesCount').textContent = data.rules.length + ' kural';
+    document.getElementById('itemsetsCount').textContent = data.frequent_itemsets.length + ' itemset';
+    
+    // Kuralları tabloya ekle
+    updateRulesTable(data.rules);
+    
+    // Itemset'leri tabloya ekle
+    updateItemsetsTable(data.frequent_itemsets);
+    
+    // Grafikleri oluştur
+    createItemsetChart(data.summary.itemsets_by_size);
+    createScatterChart(data.rules);
+    
+    // Sonuçları göster
+    document.getElementById('resultsArea').classList.remove('d-none');
+}
+
+function updateRulesTable(rules) {
+    const tbody = document.querySelector('#rulesTable tbody');
+    tbody.innerHTML = '';
+    
+    rules.forEach((rule, idx) => {
+        const antecedent = rule.antecedent.join(', ');
+        const consequent = rule.consequent.join(', ');
+        
+        // Lift rengini belirle
+        let liftClass = '';
+        if (rule.lift > 1.5) liftClass = 'text-success fw-bold';
+        else if (rule.lift < 1) liftClass = 'text-danger';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td>
+                    <span class="badge bg-secondary">{${antecedent}}</span>
+                    <i class="bi bi-arrow-right mx-1"></i>
+                    <span class="badge bg-primary">{${consequent}}</span>
+                </td>
+                <td>${(rule.support * 100).toFixed(1)}%</td>
+                <td>
+                    <div class="progress" style="height: 20px; width: 80px;">
+                        <div class="progress-bar bg-success" style="width: ${rule.confidence * 100}%">
+                            ${(rule.confidence * 100).toFixed(0)}%
+                        </div>
+                    </div>
+                </td>
+                <td class="${liftClass}">${rule.lift.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+    
+    if (rules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Kural bulunamadı. Min support/confidence değerlerini düşürün.</td></tr>';
+    }
+}
+
+function updateItemsetsTable(itemsets) {
+    const tbody = document.querySelector('#itemsetsTable tbody');
+    tbody.innerHTML = '';
+    
+    itemsets.forEach((item, idx) => {
+        const itemset = item.itemset.join(', ');
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><span class="badge bg-light text-dark">{${itemset}}</span></td>
+                <td><span class="badge bg-info">${item.size}</span></td>
+                <td>${(item.support * 100).toFixed(1)}%</td>
+            </tr>
+        `;
+    });
+}
+
+function createItemsetChart(itemsetsBySize) {
+    const ctx = document.getElementById('itemsetChart').getContext('2d');
+    
+    if (itemsetChart) {
+        itemsetChart.destroy();
+    }
+    
+    const labels = Object.keys(itemsetsBySize).map(k => `${k}-itemset`);
+    const values = Object.values(itemsetsBySize);
+    
+    itemsetChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Itemset Sayısı',
+                data: values,
+                backgroundColor: 'rgba(67, 97, 238, 0.7)',
+                borderColor: 'rgba(67, 97, 238, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createScatterChart(rules) {
+    const ctx = document.getElementById('scatterChart').getContext('2d');
+    
+    if (scatterChart) {
+        scatterChart.destroy();
+    }
+    
+    const data = rules.map(r => ({
+        x: r.support,
+        y: r.confidence,
+        lift: r.lift
+    }));
+    
+    scatterChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Kurallar',
+                data: data,
+                backgroundColor: data.map(d => 
+                    d.lift > 1.5 ? 'rgba(6, 214, 160, 0.7)' : 
+                    d.lift < 1 ? 'rgba(239, 71, 111, 0.7)' : 
+                    'rgba(67, 97, 238, 0.7)'
+                ),
+                pointRadius: 8,
+                pointHoverRadius: 12
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Support: ${(context.parsed.x * 100).toFixed(1)}%, Confidence: ${(context.parsed.y * 100).toFixed(1)}%, Lift: ${context.raw.lift.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Support'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return (value * 100).toFixed(0) + '%';
+                        }
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Confidence'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return (value * 100).toFixed(0) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

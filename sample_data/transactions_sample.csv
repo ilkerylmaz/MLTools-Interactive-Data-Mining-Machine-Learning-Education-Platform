@@ -1,0 +1,15 @@
+ekmek,süt,yumurta
+süt,peynir,yoğurt
+ekmek,süt,peynir,yumurta
+ekmek,peynir
+süt,yumurta,yoğurt
+ekmek,süt
+peynir,yoğurt
+ekmek,süt,peynir
+süt,yumurta
+ekmek,yumurta,peynir
+ekmek,süt,yoğurt
+süt,peynir
+ekmek,süt,yumurta,peynir
+yoğurt,peynir
+ekmek,peynir,yoğurt

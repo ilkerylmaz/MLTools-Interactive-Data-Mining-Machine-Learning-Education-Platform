@@ -1,0 +1,15 @@
+nitelika,nitelik2,nitelik3,sınıf
+a,70,doğru,sınıf1
+a,90,doğru,sınıf2
+a,85,yanlış,sınıf2
+a,95,yanlış,sınıf2
+a,70,yanlış,sınıf1
+b,90,doğru,sınıf1
+b,78,yanlış,sınıf1
+b,65,doğru,sınıf1
+b,75,yanlış,sınıf1
+c,80,doğru,sınıf2
+c,70,doğru,sınıf2
+c,80,yanlış,sınıf1
+c,70,yanlış,sınıf1
+c,96,yanlış,sınıf1

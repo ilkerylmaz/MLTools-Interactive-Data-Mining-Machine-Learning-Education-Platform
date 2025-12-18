@@ -1,0 +1,11 @@
+musteri,borc,gelir,statu,risk
+1,YÜKSEK,YÜKSEK,İŞVEREN,KÖTÜ
+2,YÜKSEK,YÜKSEK,ÜCRETLİ,KÖTÜ
+3,YÜKSEK,DÜŞÜK,ÜCRETLİ,KÖTÜ
+4,DÜŞÜK,DÜŞÜK,ÜCRETLİ,İYİ
+5,DÜŞÜK,DÜŞÜK,İŞVEREN,KÖTÜ
+6,DÜŞÜK,YÜKSEK,İŞVEREN,İYİ
+7,DÜŞÜK,YÜKSEK,ÜCRETLİ,İYİ
+8,DÜŞÜK,DÜŞÜK,ÜCRETLİ,İYİ
+9,DÜŞÜK,DÜŞÜK,İŞVEREN,KÖTÜ
+10,DÜŞÜK,YÜKSEK,İŞVEREN,İYİ

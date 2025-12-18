@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}K-Means Kümeleme - Veri Madenciliği Eğitim Platformu{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sol Panel: Algoritma Bilgisi ve Ayarlar -->
+    <div class="col-lg-4">
+        <!-- Algoritma Açıklaması -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-diagram-3 me-2"></i>K-Means Kümeleme
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    K-Means, verileri k adet kümeye ayıran bir kümeleme algoritmasıdır. 
+                    Amaç, küme içi varyansı (inertia) minimize etmektir.
+                </p>
+                
+                <div class="algorithm-info mt-3">
+                    <h6><i class="bi bi-calculator me-2"></i>Matematiksel Temel</h6>
+                    <div class="math-formula bg-light p-2 rounded mb-3">
+                        <strong>Amaç Fonksiyonu (Inertia):</strong><br>
+                        <code>J = Σ Σ ||x - μk||²</code>
+                    </div>
+                    
+                    <div class="algorithm-steps">
+                        <h6><i class="bi bi-list-ol me-2"></i>Algoritma Adımları</h6>
+                        <ol class="small">
+                            <li>k adet centroid rastgele seç</li>
+                            <li>Her noktayı en yakın centroid'e ata</li>
+                            <li>Her kümenin yeni centroid'ini hesapla</li>
+                            <li>Yakınsayana kadar 2-3 adımlarını tekrarla</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parametre Ayarları -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-sliders me-2"></i>Parametreler
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="kmeansForm" enctype="multipart/form-data">
+                    <!-- Dosya Yükleme -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-file-earmark-csv me-1"></i>CSV Dosyası
+                        </label>
+                        <input type="file" class="form-control" name="file" id="fileInput" 
+                               accept=".csv" required>
+                        <div class="form-text">Tüm sütunlar numerik olmalıdır.</div>
+                    </div>
+
+                    <!-- Küme Sayısı -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-collection me-1"></i>Küme Sayısı (k)
+                        </label>
+                        <input type="range" class="form-range" id="nClusters" name="n_clusters" 
+                               min="2" max="10" value="3">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">2</small>
+                            <span class="badge bg-primary" id="nClustersValue">3</span>
+                            <small class="text-muted">10</small>
+                        </div>
+                    </div>
+
+                    <!-- Maksimum İterasyon -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-arrow-repeat me-1"></i>Maksimum İterasyon
+                        </label>
+                        <input type="number" class="form-control" name="max_iter" 
+                               value="300" min="10" max="1000">
+                    </div>
+
+                    <!-- Başlatma Yöntemi -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-play-circle me-1"></i>Başlatma Yöntemi
+                        </label>
+                        <select class="form-select" name="init">
+                            <option value="kmeans++" selected>K-Means++ (Önerilen)</option>
+                            <option value="random">Random</option>
+                        </select>
+                        <div class="form-text">K-Means++ daha iyi yakınsama sağlar.</div>
+                    </div>
+
+                    <!-- Çalıştır Butonu -->
+                    <button type="submit" class="btn btn-primary w-100" id="runBtn">
+                        <i class="bi bi-play-fill me-2"></i>Algoritmayı Çalıştır
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ Panel: Sonuçlar -->
+    <div class="col-lg-8">
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center py-5 d-none">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+            <p class="mt-3 text-muted">Algoritma çalışıyor...</p>
+        </div>
+
+        <!-- Sonuç Alanı -->
+        <div id="resultsArea" class="d-none">
+            <!-- Metrikler -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="metric-card" style="border-left-color: var(--primary-color);">
+                        <div class="metric-value" id="metricInertia">-</div>
+                        <div class="metric-label">Inertia (SSE)</div>
+                        <small class="text-muted">Düşük = İyi</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card" style="border-left-color: var(--success-color);">
+                        <div class="metric-value" id="metricSilhouette">-</div>
+                        <div class="metric-label">Silhouette Score</div>
+                        <small class="text-muted">-1 ile 1 arası (Yüksek = İyi)</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card" style="border-left-color: var(--accent-color);">
+                        <div class="metric-value" id="metricIterations">-</div>
+                        <div class="metric-label">İterasyon Sayısı</div>
+                        <small class="text-muted">Yakınsama için</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scatter Plot -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-scatter-chart me-2"></i>Kümeleme Sonucu (İlk 2 Boyut)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="scatterChart" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Küme Dağılımı -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-pie-chart me-2"></i>Küme Dağılımı
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="pieChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-table me-2"></i>Küme Bilgileri
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm" id="clusterTable">
+                                <thead>
+                                    <tr>
+                                        <th>Küme</th>
+                                        <th>Eleman Sayısı</th>
+                                        <th>Yüzde</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Centroid Bilgileri -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bullseye me-2"></i>Centroid Koordinatları
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="centroidTable">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Başlangıç Mesajı -->
+        <div id="initialMessage" class="text-center py-5">
+            <i class="bi bi-cloud-upload display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">CSV Dosyası Yükleyin</h4>
+            <p class="text-muted">Numerik veriler içeren bir CSV dosyası seçin ve parametreleri ayarlayın.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let scatterChart = null;
+let pieChart = null;
+
+// Slider değer güncellemesi
+document.getElementById('nClusters').addEventListener('input', function() {
+    document.getElementById('nClustersValue').textContent = this.value;
+});
+
+// Form submit
+document.getElementById('kmeansForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    // UI güncelle
+    document.getElementById('initialMessage').classList.add('d-none');
+    document.getElementById('resultsArea').classList.add('d-none');
+    document.getElementById('loadingSpinner').classList.remove('d-none');
+    document.getElementById('runBtn').disabled = true;
+    
+    try {
+        const response = await fetch('/api/kmeans', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayResults(data);
+        } else {
+            alert('Hata: ' + data.error);
+        }
+    } catch (error) {
+        alert('Bağlantı hatası: ' + error.message);
+    } finally {
+        document.getElementById('loadingSpinner').classList.add('d-none');
+        document.getElementById('runBtn').disabled = false;
+    }
+});
+
+function displayResults(data) {
+    // Metrikleri güncelle
+    document.getElementById('metricInertia').textContent = data.metrics.inertia.toFixed(2);
+    document.getElementById('metricSilhouette').textContent = data.metrics.silhouette_score.toFixed(4);
+    document.getElementById('metricIterations').textContent = data.metrics.n_iterations;
+    
+    // Scatter Chart
+    createScatterChart(data.scatter_data, data.centroid_data, data.params.n_clusters);
+    
+    // Pie Chart
+    createPieChart(data.cluster_sizes);
+    
+    // Küme Tablosu
+    updateClusterTable(data.cluster_sizes, data.sample_count);
+    
+    // Centroid Tablosu
+    updateCentroidTable(data.cluster_centers);
+    
+    // Sonuçları göster
+    document.getElementById('resultsArea').classList.remove('d-none');
+}
+
+function createScatterChart(scatterData, centroidData, nClusters) {
+    const ctx = document.getElementById('scatterChart').getContext('2d');
+    
+    // Önceki grafiği temizle
+    if (scatterChart) {
+        scatterChart.destroy();
+    }
+    
+    // Renk paleti
+    const colors = [
+        'rgba(67, 97, 238, 0.6)',
+        'rgba(6, 214, 160, 0.6)',
+        'rgba(239, 71, 111, 0.6)',
+        'rgba(255, 209, 102, 0.6)',
+        'rgba(72, 149, 239, 0.6)',
+        'rgba(147, 51, 234, 0.6)',
+        'rgba(236, 72, 153, 0.6)',
+        'rgba(34, 197, 94, 0.6)',
+        'rgba(249, 115, 22, 0.6)',
+        'rgba(14, 165, 233, 0.6)'
+    ];
+    
+    // Kümelere göre veriyi grupla
+    const datasets = [];
+    for (let i = 0; i < nClusters; i++) {
+        const clusterPoints = scatterData.filter(p => p.cluster === i);
+        datasets.push({
+            label: `Küme ${i + 1}`,
+            data: clusterPoints.map(p => ({ x: p.x, y: p.y })),
+            backgroundColor: colors[i % colors.length],
+            borderColor: colors[i % colors.length].replace('0.6', '1'),
+            pointRadius: 5,
+            pointHoverRadius: 8
+        });
+    }
+    
+    // Centroid'leri ekle
+    datasets.push({
+        label: 'Centroid\'ler',
+        data: centroidData.map(c => ({ x: c.x, y: c.y })),
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        borderColor: 'white',
+        borderWidth: 2,
+        pointRadius: 12,
+        pointStyle: 'star',
+        pointHoverRadius: 15
+    });
+    
+    scatterChart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: (${context.parsed.x.toFixed(2)}, ${context.parsed.y.toFixed(2)})`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Özellik 1'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Özellik 2'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createPieChart(clusterSizes) {
+    const ctx = document.getElementById('pieChart').getContext('2d');
+    
+    if (pieChart) {
+        pieChart.destroy();
+    }
+    
+    const colors = [
+        '#4361ee', '#06d6a0', '#ef476f', '#ffd166', '#4895ef',
+        '#9333ea', '#ec4899', '#22c55e', '#f97316', '#0ea5e9'
+    ];
+    
+    const labels = Object.keys(clusterSizes).map(k => `Küme ${parseInt(k) + 1}`);
+    const values = Object.values(clusterSizes);
+    
+    pieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors.slice(0, labels.length),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function updateClusterTable(clusterSizes, totalCount) {
+    const tbody = document.querySelector('#clusterTable tbody');
+    tbody.innerHTML = '';
+    
+    Object.entries(clusterSizes).forEach(([cluster, count]) => {
+        const pct = ((count / totalCount) * 100).toFixed(1);
+        tbody.innerHTML += `
+            <tr>
+                <td><span class="badge bg-primary">Küme ${parseInt(cluster) + 1}</span></td>
+                <td>${count}</td>
+                <td>${pct}%</td>
+            </tr>
+        `;
+    });
+}
+
+function updateCentroidTable(centers) {
+    const thead = document.querySelector('#centroidTable thead');
+    const tbody = document.querySelector('#centroidTable tbody');
+    
+    // Başlık
+    let headerHtml = '<tr><th>Küme</th>';
+    if (centers.length > 0) {
+        for (let i = 0; i < centers[0].length; i++) {
+            headerHtml += `<th>Özellik ${i + 1}</th>`;
+        }
+    }
+    headerHtml += '</tr>';
+    thead.innerHTML = headerHtml;
+    
+    // Satırlar
+    let bodyHtml = '';
+    centers.forEach((center, idx) => {
+        bodyHtml += `<tr><td><strong>Küme ${idx + 1}</strong></td>`;
+        center.forEach(val => {
+            bodyHtml += `<td>${val.toFixed(4)}</td>`;
+        });
+        bodyHtml += '</tr>';
+    });
+    tbody.innerHTML = bodyHtml;
+}
+</script>
+{% endblock %}

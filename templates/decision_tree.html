@@ -1,0 +1,579 @@
+{% extends 'base.html' %}
+
+{% block title %}Decision Tree - Veri Madenciliği Eğitim Platformu{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* D3.js Tree Visualization Styles */
+    #treeVisualization svg {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    #treeVisualization .node circle {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    #treeVisualization .node:hover circle {
+        r: 12;
+        stroke-width: 3;
+    }
+    
+    #treeVisualization .node text {
+        pointer-events: none;
+        user-select: none;
+    }
+    
+    #treeVisualization .link {
+        opacity: 0.6;
+        transition: opacity 0.3s ease;
+    }
+    
+    #treeVisualization .link:hover {
+        opacity: 1;
+        stroke-width: 3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-diagram-2 me-2"></i>Decision Tree (Karar Ağacı)</h2>
+            <p class="text-muted mb-0">ID3, C4.5 ve CART algoritmaları</p>
+        </div>
+    </div>
+    
+    <!-- Algorithm Info -->
+    <div class="algorithm-info" style="background: linear-gradient(135deg, #06d6a0 0%, #118ab2 100%);">
+        <h5><i class="bi bi-lightbulb me-2"></i>Algoritma Hakkında</h5>
+        <p>
+            Decision Tree, veriyi özniteliklere göre bölerek bir ağaç yapısı oluşturur.
+            Her düğümde en iyi bölmeyi bulmak için farklı kriterler kullanılabilir.
+        </p>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="formula-box" style="background: rgba(255,255,255,0.1); border-left-color: white;">
+                    <strong>Entropy (ID3):</strong> H(S) = -Σ p(c)·log₂p(c)
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="formula-box" style="background: rgba(255,255,255,0.1); border-left-color: white;">
+                    <strong>Gini (CART):</strong> Gini(S) = 1 - Σ p(c)²
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="alertContainer"></div>
+    
+    <div class="row">
+        <!-- Input Section -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-gear me-2"></i>Parametreler
+                </div>
+                <div class="card-body">
+                    <form id="dtForm">
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label class="form-label">CSV Dosyası</label>
+                            <div class="upload-area" id="uploadArea">
+                                <i class="bi bi-cloud-upload"></i>
+                                <p class="upload-text mb-0">
+                                    Dosya seçmek için tıklayın veya sürükleyin
+                                </p>
+                                <small class="text-muted">Son sütun etiket (label) olmalı</small>
+                            </div>
+                            <input type="file" id="fileInput" name="file" accept=".csv" class="d-none" required>
+                        </div>
+                        
+                        <!-- Criterion -->
+                        <div class="mb-3">
+                            <label class="form-label">Algoritma / Kriter</label>
+                            <select class="form-select" name="criterion" id="criterion">
+                                <option value="entropy">ID3 (Entropy)</option>
+                                <option value="gain_ratio">C4.5 (Gain Ratio)</option>
+                                <option value="gini">CART (Gini Index)</option>
+                                <option value="twoing">CART (Twoing)</option>
+                            </select>
+                            <small class="text-muted">Farklı algoritmaları karşılaştırın</small>
+                        </div>
+                        
+                        <div class="alert alert-info small mb-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Eğitim Modu:</strong> Tüm veri kullanılır. Algoritmanın nasıl çalıştığını görmek içindir.
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-play me-2"></i>Ağacı Oluştur
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Algorithm Comparison -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Algoritma Karşılaştırması
+                </div>
+                <div class="card-body small">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>ID3</strong></td>
+                            <td>Entropy bazlı, çok değerli özn. bias'ı var</td>
+                        </tr>
+                        <tr>
+                            <td><strong>C4.5</strong></td>
+                            <td>Gain Ratio ile bias düzeltilmiş</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CART</strong></td>
+                            <td>Binary split, Gini veya Twoing</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div class="col-lg-8">
+            <div id="resultsSection" style="display: none;">
+                <!-- Algorithm Name -->
+                <div class="alert alert-success mb-4" id="algorithmName">
+                    <!-- Will be filled -->
+                </div>
+                
+                <!-- Metrics -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-speedometer2 me-2"></i>Ağaç İstatistikleri
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3" id="metricsContainer"></div>
+                    </div>
+                </div>
+                
+                <!-- Decision Tree Visualization -->
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-diagram-3 me-2"></i>Karar Ağacı Görselleştirme</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="expandAll()">
+                                <i class="bi bi-arrows-expand"></i> Tümünü Aç
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="collapseAll()">
+                                <i class="bi bi-arrows-collapse"></i> Tümünü Kapat
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="treeVisualization" style="width: 100%; height: 600px; overflow: auto; background: #f8f9fa;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Placeholder -->
+            <div id="placeholder" class="text-center py-5">
+                <i class="bi bi-diagram-2 text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">Karar Ağacı Oluşturmak İçin</h5>
+                <p class="text-muted">CSV dosyası yükleyin ve algoritma seçin</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setupFileUpload('uploadArea', 'fileInput');
+    });
+    
+    document.getElementById('dtForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput.files.length) {
+            showError('Lütfen bir CSV dosyası seçin');
+            return;
+        }
+        
+        showLoading();
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('criterion', document.getElementById('criterion').value);
+        
+        try {
+            const response = await fetch('/api/decision-tree', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            hideLoading();
+            
+            if (result.success) {
+                displayResults(result);
+            } else {
+                showError(result.error);
+            }
+        } catch (error) {
+            hideLoading();
+            showError('Bir hata oluştu: ' + error.message);
+        }
+    });
+    
+    function displayResults(result) {
+        document.getElementById('placeholder').style.display = 'none';
+        document.getElementById('resultsSection').style.display = 'block';
+        
+        // Algorithm name ve ağaç bilgileri
+        document.getElementById('algorithmName').innerHTML = 
+            `<i class="bi bi-check-circle me-2"></i><strong>${result.algorithm}</strong> başarıyla oluşturuldu.<br>
+            <small>Toplam: ${result.tree_info.num_samples} örnek | 
+            Derinlik: ${result.tree_info.depth} | 
+            Yaprak sayısı: ${result.tree_info.num_leaves} | 
+            Özellik sayısı: ${result.tree_info.num_features}</small>`;
+        
+        // Ağaç istatistikleri (metrikler yerine)
+        const metricsHtml = `
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${result.tree_info.depth}</div>
+                    <div class="metric-label">Ağaç Derinliği</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${result.tree_info.num_leaves}</div>
+                    <div class="metric-label">Yaprak Sayısı</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${result.tree_info.num_samples}</div>
+                    <div class="metric-label">Toplam Örnek</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="metric-box">
+                    <div class="metric-value">${result.tree_info.num_features}</div>
+                    <div class="metric-label">Özellik Sayısı</div>
+                </div>
+            </div>
+        `;
+        document.getElementById('metricsContainer').innerHTML = metricsHtml;
+        
+        // Decision Tree Visualization
+        if (result.tree_structure && Object.keys(result.tree_structure).length > 0) {
+            renderDecisionTree(result.tree_structure, result.feature_names || []);
+        }
+    }
+    
+    // =============================================================================
+    // D3.js Decision Tree Visualization
+    // =============================================================================
+    
+    let treeData = null;
+    let root = null;
+    let svg = null;
+    let g = null;
+    let globalFeatureNames = []; // Global feature names
+    
+    function renderDecisionTree(data, featureNames) {
+        treeData = data;
+        globalFeatureNames = featureNames || []; // Kaydet
+        
+        // Clear previous tree
+        d3.select("#treeVisualization").html("");
+        
+        const container = document.getElementById('treeVisualization');
+        const width = container.clientWidth;
+        const height = 600;
+        
+        // Create SVG
+        svg = d3.select("#treeVisualization")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+        
+        g = svg.append("g")
+            .attr("transform", "translate(40,40)");
+        
+        // Create tree layout
+        const tree = d3.tree()
+            .size([width - 80, height - 80]);
+        
+        // Create hierarchy
+        root = d3.hierarchy(data);
+        tree(root);
+        
+        // Add zoom capability
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 3])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        // Draw links
+        g.selectAll('.link')
+            .data(root.links())
+            .enter()
+            .append('path')
+            .attr('class', 'link')
+            .attr('d', d3.linkVertical()
+                .x(d => d.x)
+                .y(d => d.y))
+            .attr('fill', 'none')
+            .attr('stroke', '#999')
+            .attr('stroke-width', 2);
+        
+        // Draw nodes
+        const node = g.selectAll('.node')
+            .data(root.descendants())
+            .enter()
+            .append('g')
+            .attr('class', 'node')
+            .attr('transform', d => `translate(${d.x},${d.y})`)
+            .style('cursor', 'pointer')
+            .on('click', (event, d) => {
+                if (d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                } else if (d._children) {
+                    d.children = d._children;
+                    d._children = null;
+                }
+                updateTree(d);
+            });
+        
+        // Add circles
+        node.append('circle')
+            .attr('r', 8)
+            .attr('fill', d => d.data.is_leaf ? '#06d6a0' : '#4361ee')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+        
+        // Add labels
+        node.append('text')
+            .attr('dy', -15)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', 'bold')
+            .text(d => {
+                if (d.data.is_leaf) {
+                    return `${d.data.prediction}`;
+                } else {
+                    const featureName = globalFeatureNames[d.data.feature_index] || `Feature ${d.data.feature_index}`;
+                    if (d.data.threshold !== undefined && d.data.threshold !== null) {
+                        return `${featureName} ≤ ${d.data.threshold.toFixed(2)}`;
+                    }
+                    return featureName;
+                }
+            });
+        
+        // Add sample count
+        node.append('text')
+            .attr('dy', 25)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '9px')
+            .attr('fill', '#666')
+            .text(d => `n=${d.data.samples}`);
+        
+        // Add entropy/gini value (eğitim amaçlı)
+        node.append('text')
+            .attr('dy', 38)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#e63946')
+            .attr('font-weight', 'bold')
+            .text(d => {
+                if (d.data.entropy !== null && d.data.entropy !== undefined) {
+                    return `H=${d.data.entropy.toFixed(3)}`;
+                } else if (d.data.gini !== null && d.data.gini !== undefined) {
+                    return `G=${d.data.gini.toFixed(3)}`;
+                }
+                return '';
+            });
+        
+        // Add information gain (sadece split düğümler için)
+        node.append('text')
+            .attr('dy', 50)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#06d6a0')
+            .attr('font-weight', 'bold')
+            .text(d => {
+                if (!d.data.is_leaf && d.data.information_gain !== null && d.data.information_gain !== undefined) {
+                    return `IG=${d.data.information_gain.toFixed(3)}`;
+                }
+                return '';
+            });
+        
+        // Add edge labels
+        g.selectAll('.edge-label')
+            .data(root.links())
+            .enter()
+            .append('text')
+            .attr('class', 'edge-label')
+            .attr('x', d => (d.source.x + d.target.x) / 2)
+            .attr('y', d => (d.source.y + d.target.y) / 2)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '9px')
+            .attr('fill', '#666')
+            .text(d => d.target.data.edge_label || '');
+    }
+    
+    function updateTree(source) {
+        // Redraw tree with updated data
+        const container = document.getElementById('treeVisualization');
+        const width = container.clientWidth;
+        const height = 600;
+        
+        const tree = d3.tree().size([width - 80, height - 80]);
+        tree(root);
+        
+        // Update links
+        const links = g.selectAll('.link')
+            .data(root.links());
+        
+        links.exit().remove();
+        
+        links.enter()
+            .append('path')
+            .attr('class', 'link')
+            .merge(links)
+            .transition()
+            .duration(500)
+            .attr('d', d3.linkVertical()
+                .x(d => d.x)
+                .y(d => d.y));
+        
+        // Update nodes
+        const nodes = g.selectAll('.node')
+            .data(root.descendants());
+        
+        nodes.exit().remove();
+        
+        const nodeEnter = nodes.enter()
+            .append('g')
+            .attr('class', 'node')
+            .style('cursor', 'pointer')
+            .on('click', (event, d) => {
+                if (d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                } else if (d._children) {
+                    d.children = d._children;
+                    d._children = null;
+                }
+                updateTree(d);
+            });
+        
+        nodeEnter.append('circle')
+            .attr('r', 8)
+            .attr('fill', d => d.data.is_leaf ? '#06d6a0' : '#4361ee')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+        
+        nodeEnter.append('text')
+            .attr('dy', -15)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', 'bold');
+        
+        nodeEnter.append('text')
+            .attr('dy', 25)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '9px')
+            .attr('fill', '#666');
+        
+        nodeEnter.append('text')
+            .attr('dy', 38)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#e63946')
+            .attr('font-weight', 'bold');
+        
+        nodeEnter.append('text')
+            .attr('dy', 50)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '8px')
+            .attr('fill', '#06d6a0')
+            .attr('font-weight', 'bold');
+        
+        // Update all nodes (existing + new)
+        const allNodes = nodes.merge(nodeEnter);
+        
+        allNodes.selectAll('text').filter((d, i) => i === 0)  // İlk text (label)
+            .text(d => {
+                if (d.data.is_leaf) {
+                    return `${d.data.prediction}`;
+                } else {
+                    const featureName = globalFeatureNames[d.data.feature_index] || `Feature ${d.data.feature_index}`;
+                    if (d.data.threshold !== undefined && d.data.threshold !== null) {
+                        return `${featureName} ≤ ${d.data.threshold.toFixed(2)}`;
+                    }
+                    return featureName;
+                }
+            });
+        
+        allNodes.selectAll('text').filter((d, i) => i === 1)  // İkinci text (sample count)
+            .text(d => `n=${d.data.samples}`);
+        
+        allNodes.selectAll('text').filter((d, i) => i === 2)  // Üçüncü text (entropy/gini)
+            .text(d => {
+                if (d.data.entropy !== null && d.data.entropy !== undefined) {
+                    return `H=${d.data.entropy.toFixed(3)}`;
+                } else if (d.data.gini !== null && d.data.gini !== undefined) {
+                    return `G=${d.data.gini.toFixed(3)}`;
+                }
+                return '';
+            });
+        
+        allNodes.selectAll('text').filter((d, i) => i === 3)  // Dördüncü text (IG)
+            .text(d => {
+                if (!d.data.is_leaf && d.data.information_gain !== null && d.data.information_gain !== undefined) {
+                    return `IG=${d.data.information_gain.toFixed(3)}`;
+                }
+                return '';
+            });
+        
+        allNodes
+            .transition()
+            .duration(500)
+            .attr('transform', d => `translate(${d.x},${d.y})`);
+    }
+    
+    function expandAll() {
+        if (root) {
+            root.descendants().forEach(d => {
+                if (d._children) {
+                    d.children = d._children;
+                    d._children = null;
+                }
+            });
+            updateTree(root);
+        }
+    }
+    
+    function collapseAll() {
+        if (root) {
+            root.descendants().forEach(d => {
+                if (d.children && d.depth > 0) {
+                    d._children = d.children;
+                    d.children = null;
+                }
+            });
+            updateTree(root);
+        }
+    }
+</script>
+{% endblock %}
